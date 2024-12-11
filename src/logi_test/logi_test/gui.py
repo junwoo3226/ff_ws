@@ -35,7 +35,7 @@ class ROSPublisherNode(Node):
     def conveyor_publish_message(self, message):
         msg = String()
         msg.data = message
-        self.robot_publisher.publish(msg)
+        self.conveyor_publisher.publish(msg)
         self.get_logger().info(f"Published: {message}")
 
 
@@ -87,7 +87,7 @@ class SimpleApp(QtWidgets.QMainWindow):
         uic.loadUi(ui_path, self)
 
         # UI에서 slider, log, 카메라 QLabel, 버튼, 이메일 입력 필드 찾기
-        self.conveyor_slider = self.findChild(QtWidgets.QSlider, 'conveyor_slider')  # QSlider 객체
+        # self.conveyor_slider = self.findChild(QtWidgets.QSlider, 'conveyor_slider')  # QSlider 객체
         self.log_display = self.findChild(QtWidgets.QTextEdit, 'log_display')  # QTextBrowser 객체
         self.usbcam = self.findChild(QtWidgets.QLabel, 'usbcam')  # QLabel 객체
         self.job1_button = self.findChild(QtWidgets.QPushButton, 'job1_button')
@@ -95,12 +95,26 @@ class SimpleApp(QtWidgets.QMainWindow):
         self.job3_button = self.findChild(QtWidgets.QPushButton, 'job3_button')
         self.recipient = self.findChild(QtWidgets.QLineEdit, 'recipient')  # 이메일 입력 QLineEdit
         self.send_email_button = self.findChild(QtWidgets.QPushButton, 'send_email_button')
+        self.conveyor_input = self.findChild(QtWidgets.QLineEdit, 'conveyor_input') # 컨베이너 속도 입력
+        self.send_con_num_button = self.findChild(QtWidgets.QPushButton, 'send_con_num_button') # 전송 버튼
+
 
         self.log_display.setReadOnly(True)
 
         # UI 로드 확인
-        if not all([self.conveyor_slider, self.log_display, self.usbcam, self.job1_button, self.job2_button,
-                    self.job3_button, self.recipient, self.send_email_button]):
+        if not all(
+            [
+                # self.conveyor_slider,
+                self.log_display,
+                self.usbcam,
+                self.job1_button,
+                self.job2_button,
+                self.job3_button,
+                self.recipient,
+                self.send_email_button,
+                self.conveyor_input,
+                self.send_con_num_button,
+            ]):
             print("Error: Required widgets not found in the UI file.")
             sys.exit()
 
@@ -121,7 +135,7 @@ class SimpleApp(QtWidgets.QMainWindow):
         self.camera_timer.start(30)  # 30ms마다 업데이트
 
         # 슬라이더 이벤트 연결
-        self.conveyor_slider.valueChanged.connect(self.handle_slider_change)
+        # self.conveyor_slider.valueChanged.connect(self.handle_slider_change)
 
         # 버튼 클릭 이벤트 연결
         self.job1_button.clicked.connect(self.handle_job1)
@@ -141,6 +155,9 @@ class SimpleApp(QtWidgets.QMainWindow):
 
         # 이메일 발송 버튼 이벤트 연결
         self.send_email_button.clicked.connect(self.send_email)
+
+        # 컨베이너 시리얼 발송 버튼 이벤트 연결
+        self.send_con_num_button.clicked.connect(self.send_con_num)
 
     ##### 슬라이더 이벤트 처리 #####
     def handle_slider_change(self):
@@ -256,6 +273,23 @@ class SimpleApp(QtWidgets.QMainWindow):
             QtWidgets.QMessageBox.information(None, "Success", f"이메일 전송 완료: {recipient}")
         except Exception as e:
             QtWidgets.QMessageBox.critical(None, "Error", f"이메일 전송 불가: {str(e)}")
+
+
+    ### 컨베이너에 시리얼 통신으로 사용자가 숫자를 입력하면 그 수만큼 클럭 컨베이너 이동 ###
+    def send_con_num(self):
+        try:
+            # 입력된 숫자 가져오기
+            conveyor_input = int(self.conveyor_input.text())
+            if conveyor_input <= 0:
+                raise ValueError("Input must be a positive number.")
+
+            # ROS 2를 통해 메시지 퍼블리싱
+            message = f"move {conveyor_input}"  # 명령어 포맷 (예: move 100)
+            self.ros_node.conveyor_publish_message(message)
+            self.log_display.append(f"{current_time}컨베이어를 {conveyor_input} 스텝 이동합니다.")
+        except ValueError as e:
+            QtWidgets.QMessageBox.warning(self, "Invalid Input", "양의 정수를 입력해주세요.")
+
 
     ##### 종료 처리 #####
     def closeEvent(self, event):

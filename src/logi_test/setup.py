@@ -21,7 +21,7 @@ setup(
     entry_points={
         'console_scripts': [
     	'gui = logi_test.gui:main',
-	'subscriber = logi_test.subscriber:main',
+	    'subscriber = logi_test.subscriber:main',
         ],
     },
 )
